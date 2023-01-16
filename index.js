@@ -1,5 +1,4 @@
 //    https://discordapp.com/oauth2/authorize?&client_id=1061481745133879438&scope=bot&perms=274877983744
-// TODO: ADD CHANNEL 
 // TTO: 915442903529181184
 // ELOTIHS: 720040796233138207
 const fs = require('fs');
