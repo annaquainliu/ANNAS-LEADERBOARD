@@ -1,18 +1,19 @@
-// TODO: ADD CHANNEL 
+
 
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
-const { token, clientId, guildId } = require('./config.json');
+const { token, clientId, guildId, channelID} = require('./config.json');
 const db = require('./db.js');
 const WORDS = require('./words.js');
-const channelID = "1063623967413379142";
+const overlord = "KlymeneArts";
 var channel;
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, 
 	GatewayIntentBits.GuildMessages, 
 	GatewayIntentBits.MessageContent,
+	GatewayIntentBits.GuildVoiceStates
 ]});
 
 client.commands = new Collection();
@@ -20,7 +21,6 @@ client.commands = new Collection();
 // When the client is ready, run this code (only once)
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 
-db.connectToDatabase();
 
 client.once(Events.ClientReady, c => {
 	channel = client.channels.cache.get(channelID);
@@ -65,7 +65,7 @@ client.on('messageCreate', (message) => {
 	const lowerCasedMsg = message.content.toLowerCase();
 	const author = message.author.username;
 
-	if (author == "ANNA'S LEADERBOARD!!" || author == "KlymeneArts" 
+	if (author == "ANNA'S LEADERBOARD!!" || author == overlord 
 	|| !(containsMe(message) || lowerCasedMsg.match("anna"))) {
 		console.log("exiting");
 		return;
@@ -116,7 +116,7 @@ client.on('messageCreate', (message) => {
 		var contains = false;
 
 		values.forEach((value, key, map) => {
-			if (value.username == 'KlymeneArts') {
+			if (value.username == overlord) {
 				contains = true;
 				return;
 			}
@@ -142,5 +142,55 @@ client.on('messageCreate', (message) => {
 	}
 
 });
+
+let pplInVC = {};
+let klymeneVCID = null; //the id of the channel vc that klymene is currently in
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+	let username = newState.member.user.username;
+	console.log("voice state update");
+	console.log("new channel id", newState.channelId, "old channel id", oldState.channelId, "username, ", username, "overlord, ", overlord);
+	//klymene changed state
+	if (newState.channelId != oldState.channelId && username == overlord) {
+		klymeneVCID = newState.channelId;
+		console.log("klymene changed state");
+
+		if (oldState.channelId != null) { //klymene switched channels or left
+			console.log("klymene left or switched to a channel");
+			Object.keys(pplInVC).forEach(key => calculateVCPoints(key));
+		} 
+
+		//klymene joined or switched a channel
+		if (newState.channelId != null) {
+			let currdate = new Date();
+			//adds people in channel before klymene joined to the object
+			client.channels.cache.get(newState.channelId).members.map(
+				member => {
+					if (member.user.username != overlord) {
+						pplInVC[member.user.username] = currdate;
+					}
+				}
+			);
+			console.log("klymene joined or switched to a channel");
+		}
+	} 
+
+	if (klymeneVCID != null && username != overlord) {
+		if (newState.channelId == klymeneVCID) {
+			pplInVC[username] = new Date();
+		} else if (oldState.channelId == klymeneVCID && newState.channelId != klymeneVCID) {
+			calculateVCPoints(username);
+		}
+	}
+
+	function calculateVCPoints(username) {
+		let timeSpent = (new Date() - pplInVC[username]) / 60000; // milliseconds --> minutes
+		let currencyEarned = Math.round(timeSpent) * 3;
+		db.addPointsInDatabase(username, currencyEarned);
+		channel.send(`${username} spent **${timeSpent}** minutes with me in VC! They receive ${currencyEarned} Anna Points! :smile: **:3**`)
+		delete pplInVC[username];
+	}
+});
+
 // Log in to Discord with your client's token
 client.login(token);
