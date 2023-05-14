@@ -10,7 +10,7 @@ const WORDS = require('./words.js');
 const overlord = "KlymeneArts";
 var channel;
 
-// Create a new client instance
+// Create a new client instance    
 const client = new Client({ intents: [GatewayIntentBits.Guilds, 
 	GatewayIntentBits.GuildMessages, 
 	GatewayIntentBits.MessageContent,
