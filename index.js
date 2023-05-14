@@ -148,48 +148,51 @@ let pplInVC = {};
 let klymeneVCID = null; //the id of the channel vc that klymene is currently in
 
 client.on('voiceStateUpdate', (oldState, newState) => {
-	let username = newState.member.user.username;
-	//klymene changed state
-	
-	if (username == overlord) {
-		klymeneVCID = newState.channelId;
 
-		if (oldState.channelId != null) { //klymene switched channels or left
-			Object.keys(pplInVC).forEach(key => calculateVCPoints(key));
-		} 
+	if (newState.channelId != oldState.channelId) {
+		let username = newState.member.user.username;
+		//klymene changed state
+		
+		if (username == overlord) {
+			klymeneVCID = newState.channelId;
 
-		//klymene joined or switched a channel
-		if (newState.channelId != null) {
-			let currdate = moment();
-			//adds people in channel before klymene joined to the object
-			client.channels.cache.get(newState.channelId).members.map(
-				member => {
-					if (member.user.username != overlord) {
-						pplInVC[member.user.username] = currdate;
+			if (oldState.channelId != null) { //klymene switched channels or left
+				Object.keys(pplInVC).forEach(key => calculateVCPoints(key));
+			} 
+
+			//klymene joined or switched a channel
+			if (newState.channelId != null) {
+				let currdate = moment();
+				//adds people in channel before klymene joined to the object
+				client.channels.cache.get(newState.channelId).members.map(
+					member => {
+						if (member.user.username != overlord) {
+							pplInVC[member.user.username] = currdate;
+						}
 					}
-				}
-			);
-		}
-	} 
-
-	if (klymeneVCID != null && username != overlord) {
-		if (newState.channelId == klymeneVCID) {
-			pplInVC[username] = moment();
-		} else if (oldState.channelId == klymeneVCID && newState.channelId != klymeneVCID) {
-			calculateVCPoints(username);
+				);
+			}
+		} 
+		else if (klymeneVCID != null) {
+			if (newState.channelId == klymeneVCID) {
+				pplInVC[username] = moment();
+			} else if (oldState.channelId == klymeneVCID && newState.channelId != klymeneVCID) {
+				calculateVCPoints(username);
+			}
 		}
 	}
 
-	function calculateVCPoints(username) {
-		let now = moment();
-		console.log(now, pplInVC[username]);
-		let timeSpent = now.diff(pplInVC[username], 'minutes'); 
-		let currencyEarned = Math.round(timeSpent) * 3;
-		db.addPointsInDatabase(username, currencyEarned);
-		channel.send(`${username} spent **${timeSpent}** minutes with me in VC! They receive ${currencyEarned} Anna Points! :smile: **:3**`)
-		delete pplInVC[username];
-	}
 });
+
+function calculateVCPoints(username) {
+	let now = moment();
+	console.log(now, pplInVC[username]);
+	let timeSpent = now.diff(pplInVC[username], 'minutes'); 
+	let currencyEarned = Math.round(timeSpent) * 3;
+	db.addPointsInDatabase(username, currencyEarned);
+	channel.send(`${username} spent **${timeSpent}** minutes with me in VC! They receive ${currencyEarned} Anna Points! :smile: **:3**`)
+	delete pplInVC[username];
+}
 
 // Log in to Discord with your client's token
 client.login(token);
